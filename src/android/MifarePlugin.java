@@ -16,7 +16,7 @@
 
 package se.frostyelk.cordova.mifare;
 
-import java.util.Arrays
+import java.util.Arrays;
 import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
@@ -591,7 +591,7 @@ public class MifarePlugin extends CordovaPlugin {
 						// Check if PACK is matching expected PACK
 						// This is a (not that) secure method to check if tag is genuine
 						if ((response != null) && (response.length >= 2)) {
-							byte[] packResponse = Arra	ys.copyOf(response, 2);
+							byte[] packResponse = Arrays.copyOf(response, 2);
 							if (!(pack[0] == packResponse[0] && pack[1] == packResponse[1])) {
 								Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString());
 								//Toast.makeText(ctx, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString(), Toast.LENGTH_LONG).show();

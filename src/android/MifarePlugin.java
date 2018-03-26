@@ -23,7 +23,7 @@ import android.nfc.Tag;
 import android.nfc.tech.NfcA;
 import android.nfc.NdefMessage;
 import android.nfc.NdefRecord;
-import android.support.test.rule.UiThreadTestRule;
+//import android.support.test.rule.UiThreadTestRule;
 import com.nxp.nfclib.classic.MFClassic;
 import com.nxp.nfclib.exceptions.SmartCardException;
 import com.nxp.nfclib.icode.*;
@@ -266,7 +266,7 @@ public class MifarePlugin extends CordovaPlugin {
         NxpLogUtils.i(TAG, "onNewIntent Action: " + intent.getAction());
 		
         tagInfo = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
-		byte[] uid = paramIntent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
+		byte[] uid = intent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
 		
 		NfcA ntag215 = NfcA.get(tagInfo);
 		Log.d(TAG, "GOT ntag215");
@@ -599,7 +599,7 @@ public class MifarePlugin extends CordovaPlugin {
 						}
 					//}catch(TagLostException e){
 					}catch(Exception e){
-						log.d(TAG, e.getMessage());
+						Log.d(TAG, e.getMessage());
 						e.printStackTrace();
 					}
 

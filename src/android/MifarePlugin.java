@@ -701,7 +701,7 @@ public class MifarePlugin extends CordovaPlugin {
 							e.printStackTrace();
 						}
 					}
-					this.runOnUiThread(new Runnable() {
+					runOnUiThread(new Runnable() {
 						@Override
 						public void run() {
 							//UI related things, not important for NFC
@@ -709,9 +709,9 @@ public class MifarePlugin extends CordovaPlugin {
 							//tv.setText("");
 						}
 					});
-					curAction = "handle";
+					//curAction = "handle";
 					
-					read();
+					//read();
 					
 					try {
 						nfca.close();

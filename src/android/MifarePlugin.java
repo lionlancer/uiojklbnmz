@@ -16,10 +16,14 @@
 
 package se.frostyelk.cordova.mifare;
 
+import java.util.Arrays
 import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.NfcA;
+import android.nfc.NdefMessage;
+import android.nfc.NdefRecord;
+import android.support.test.rule.UiThreadTestRule;
 import com.nxp.nfclib.classic.MFClassic;
 import com.nxp.nfclib.exceptions.SmartCardException;
 import com.nxp.nfclib.icode.*;
@@ -265,8 +269,7 @@ public class MifarePlugin extends CordovaPlugin {
 		byte[] uid = paramIntent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
 		
 		NfcA ntag215 = NfcA.get(tagInfo);
-		Log.d(TAG, "ntag215");
-		Log.d(TAG, ntag215);
+		Log.d(TAG, "GOT ntag215");
 		
         // Only act on intents from a tag
         if (tagInfo == null) {
@@ -588,7 +591,7 @@ public class MifarePlugin extends CordovaPlugin {
 						// Check if PACK is matching expected PACK
 						// This is a (not that) secure method to check if tag is genuine
 						if ((response != null) && (response.length >= 2)) {
-							byte[] packResponse = Arrays.copyOf(response, 2);
+							byte[] packResponse = Arra	ys.copyOf(response, 2);
 							if (!(pack[0] == packResponse[0] && pack[1] == packResponse[1])) {
 								Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString());
 								//Toast.makeText(ctx, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString(), Toast.LENGTH_LONG).show();
@@ -654,8 +657,10 @@ public class MifarePlugin extends CordovaPlugin {
 						msg = new NdefMessage(r1, r2);
 						
 						Log.d(TAG, "Message saved");
-					} catch (UnsupportedEncodingException e) {
+					//} catch (UnsupportedEncodingException e) {
+					} catch (Exception e) {
 						Log.d(TAG, "Error:");
+						Log.d(TAG, e.getMessage());
 						e.printStackTrace();
 						
 					}
@@ -688,8 +693,8 @@ public class MifarePlugin extends CordovaPlugin {
 						System.arraycopy(tlvEncodedData, i, command, 2, 4);
 						try {
 							response = nfca.transceive(command);
-							Log.d(TAG, "Response:");
-							Log.d(TAG, response);
+							Log.d(TAG, "Response got!:");
+							//Log.d(TAG, response);
 							
 						} catch (IOException e) {
 							Log.d(TAG, "Error:" + e.getMessage());
@@ -749,7 +754,7 @@ public class MifarePlugin extends CordovaPlugin {
 				});
 				
 				Log.d(TAG, "Read Response:");
-				Log.d(TAG, response);
+				//Log.d(TAG, response);
 				
 				// Check if PACK is matching expected PACK
 				// This is a (not that) secure method to check if tag is genuine

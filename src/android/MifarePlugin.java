@@ -238,11 +238,12 @@ public class MifarePlugin extends CordovaPlugin {
 				handleUnsupportedCards();
             }
 			
-			@Override
-			public void onCardNotSupported(Tag tag) {
-				NxpLogUtils.i(TAG, "Found Not Supported Card!");   
-				handleUnsupportedCards();
-			}
+			//@Override
+			//public void onCardNotSupported(Tag tag) {
+			//	NxpLogUtils.i(TAG, "Found Not Supported Card!");   
+		//		handleUnsupportedCards();
+		//		handleUnsupportedCards();
+		//	}
 			
         };
 

@@ -19,6 +19,7 @@ package se.frostyelk.cordova.mifare;
 import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
+import android.nfc.tech.NfcA
 import com.nxp.nfclib.classic.MFClassic;
 import com.nxp.nfclib.exceptions.SmartCardException;
 import com.nxp.nfclib.icode.*;
@@ -42,6 +43,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.IOException;
+
+
+import android.util.Log;
 
 /**
  * This class represents the native implementation for the MIFARE Cordova plugin.
@@ -107,7 +111,8 @@ public class MifarePlugin extends CordovaPlugin {
             NxpLogUtils.i(LOGTAG, "No Intent in pluginInitialize");
         }
     }
-
+	
+	/*
     @Override
     public void onNewIntent(Intent intent) {
         super.onNewIntent(intent);
@@ -248,8 +253,33 @@ public class MifarePlugin extends CordovaPlugin {
         };
 
         NxpNfcLibLite.getInstance().filterIntent(intent, callback);
-    }
+    } */
 
+	@Override
+    public void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        NxpLogUtils.i(TAG, "onNewIntent Intent: " + intent.toString());
+        NxpLogUtils.i(TAG, "onNewIntent Action: " + intent.getAction());
+		
+        tagInfo = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+		byte[] uid = paramIntent.getByteArrayExtra(NfcAdapter.EXTRA_ID);
+		
+		NfcA ntag215 = NfcA.get(tagInfo);
+		Log.d(TAG, "ntag215");
+		Log.d(TAG, ntag215);
+		
+        // Only act on intents from a tag
+        if (tagInfo == null) {
+            return;
+        }
+
+        NxpLogUtils.i(TAG, "Tag info: " + tagInfo.toString());
+		
+		writeAndProtectTag(intent, "Hello World");
+		
+        //NxpNfcLibLite.getInstance().filterIntent(intent, callback);
+    }
+	
 
     /**
      *
@@ -522,4 +552,285 @@ public class MifarePlugin extends CordovaPlugin {
 
         return null;
     }
+	
+	private void writeAndProtectTag(final Intent intent, final String message) {
+		// Run the entire process in its own thread as NfcA.transceive(byte[] data);
+		// Should not be run in main thread according to <https://developer.android.com/reference/android/nfc/tech/NfcA.html#transceive(byte[])>
+		(new Thread(new Runnable() {
+			// Password has to be 4 characters
+			// Password Acknowledge has to be 2 characters
+			byte[] pwd      = "-_bA".getBytes();
+			byte[] pack     = "cC".getBytes();
+
+			@Override
+			public void run() {
+				// Store tag object for use in NfcA and Ndef
+				Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+				// Using NfcA instead of MifareUltralight should make no difference in this method
+				NfcA nfca = null;
+
+				// Whole process is put into a big try-catch trying to catch the transceive's IOException
+				try {
+					nfca = NfcA.get(tag);
+
+					nfca.connect();
+
+					byte[] response;
+
+					// Authenticate with the tag first
+					// In case it's already been locked
+					try {
+						response = nfca.transceive(new byte[]{
+								(byte) 0x1B, // PWD_AUTH
+								pwd[0], pwd[1], pwd[2], pwd[3]
+						});
+
+						// Check if PACK is matching expected PACK
+						// This is a (not that) secure method to check if tag is genuine
+						if ((response != null) && (response.length >= 2)) {
+							byte[] packResponse = Arrays.copyOf(response, 2);
+							if (!(pack[0] == packResponse[0] && pack[1] == packResponse[1])) {
+								Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString())
+								//Toast.makeText(ctx, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString(), Toast.LENGTH_LONG).show();
+							}
+						}
+					//}catch(TagLostException e){
+					}catch(Exception e){
+						log.d(TAG, e.getMessage())
+						e.printStackTrace();
+					}
+
+					// Get Page 2Ah
+					response = nfca.transceive(new byte[] {
+							(byte) 0x30, // READ
+							(byte) 0x2A  // page address
+					});
+					// configure tag as write-protected with unlimited authentication tries
+					if ((response != null) && (response.length >= 16)) {    // read always returns 4 pages
+						boolean prot = false;                               // false = PWD_AUTH for write only, true = PWD_AUTH for read and write
+						int authlim = 0;                                    // 0 = unlimited tries
+						nfca.transceive(new byte[] {
+								(byte) 0xA2, // WRITE
+								(byte) 0x2A, // page address
+								(byte) ((response[0] & 0x078) | (prot ? 0x080 : 0x000) | (authlim & 0x007)),    // set ACCESS byte according to our settings
+								0, 0, 0                                                                         // fill rest as zeros as stated in datasheet (RFUI must be set as 0b)
+						});
+					}
+					// Get page 29h
+					response = nfca.transceive(new byte[] {
+							(byte) 0x30, // READ
+							(byte) 0x29  // page address
+					});
+					// Configure tag to protect entire storage (page 0 and above)
+					if ((response != null) && (response.length >= 16)) {  // read always returns 4 pages
+						int auth0 = 0;                                    // first page to be protected
+						nfca.transceive(new byte[] {
+								(byte) 0xA2, // WRITE
+								(byte) 0x29, // page address
+								response[0], 0, response[2],              // Keep old mirror values and write 0 in RFUI byte as stated in datasheet
+								(byte) (auth0 & 0x0ff)
+						});
+					}
+
+					// Send PACK and PWD
+					// set PACK:
+					nfca.transceive(new byte[] {
+							(byte)0xA2,
+							(byte)0x2C,
+							pack[0], pack[1], 0, 0  // Write PACK into first 2 Bytes and 0 in RFUI bytes
+					});
+					// set PWD:
+					nfca.transceive(new byte[] {
+							(byte)0xA2,
+							(byte)0x2B,
+							pwd[0], pwd[1], pwd[2], pwd[3] // Write all 4 PWD bytes into Page 43
+					});
+
+					// Generate NdefMessage to be written onto the tag
+					NdefMessage msg = null;
+					try {
+						NdefRecord r1 = NdefRecord.createMime("text/plain", message.getBytes("UTF-8"));
+						NdefRecord r2 = NdefRecord.createApplicationRecord("com.example.alex.nfcapppcekunde");
+						msg = new NdefMessage(r1, r2);
+						
+						Log.d(TAG, "Message saved")
+					} catch (UnsupportedEncodingException e) {
+						Log.d(TAG, "Error:")
+						e.printStackTrace();
+						
+					}
+
+					byte[] ndefMessage = msg.toByteArray();
+
+					nfca.transceive(new byte[] {
+							(byte)0xA2, // WRITE
+							(byte)3,    // block address
+							(byte)0xE1, (byte)0x10, (byte)0x12, (byte)0x00
+					});
+
+					// wrap into TLV structure
+					byte[] tlvEncodedData = null;
+
+					tlvEncodedData = new byte[ndefMessage.length + 3];
+					tlvEncodedData[0] = (byte)0x03;  // NDEF TLV tag
+					tlvEncodedData[1] = (byte)(ndefMessage.length & 0x0FF);  // NDEF TLV length (1 byte)
+					System.arraycopy(ndefMessage, 0, tlvEncodedData, 2, ndefMessage.length);
+					tlvEncodedData[2 + ndefMessage.length] = (byte)0xFE;  // Terminator TLV tag
+
+					// fill up with zeros to block boundary:
+					tlvEncodedData = Arrays.copyOf(tlvEncodedData, (tlvEncodedData.length / 4 + 1) * 4);
+					for (int i = 0; i < tlvEncodedData.length; i += 4) {
+						byte[] command = new byte[] {
+								(byte)0xA2, // WRITE
+								(byte)((4 + i / 4) & 0x0FF), // block address
+								0, 0, 0, 0
+						};
+						System.arraycopy(tlvEncodedData, i, command, 2, 4);
+						try {
+							response = nfca.transceive(command);
+							Log.d(TAG, "Response:");
+							Log.d(TAG, response);
+							
+						} catch (IOException e) {
+							Log.d(TAG, "Error:" + e.getMessage());
+							e.printStackTrace();
+						}
+					}
+					runOnUiThread(new Runnable() {
+						@Override
+						public void run() {
+							//UI related things, not important for NFC
+							//btn.setImageResource(R.drawable.arrow_red);
+							//tv.setText("");
+						}
+					});
+					curAction = "handle";
+					
+					read();
+					
+					try {
+						nfca.close();
+						Log.d(TAG, "NFC Closed");
+					} catch (IOException e) {
+						Log.d(TAG, "Error: " + e.getMessage());
+						e.printStackTrace();
+					}
+
+				} catch (IOException e) {
+					//Trying to catch any ioexception that may be thrown
+					Log.d(TAG, "Error: " + e.getMessage());
+					e.printStackTrace();
+				} catch (Exception e) {
+					Log.d(TAG, "Error: " + e.getMessage());
+					//Trying to catch any exception that may be thrown
+					e.printStackTrace();
+				}
+
+			}
+		})).start();
+	}
+	
+	private void read(){
+		byte[] response;
+
+		//Read page 41 on NTAG213, will be different for other tags
+		response = mifare.transceive(new byte[] {
+				(byte) 0x30, // READ
+				41           // page address
+		});
+		// Authenticate with the tag first
+		// only if the Auth0 byte is not 0xFF,
+		// which is the default value meaning unprotected
+		if(response[3] != (byte)0xFF) {
+			try {
+				response = mifare.transceive(new byte[]{
+						(byte) 0x1B, // PWD_AUTH
+						pwd[0], pwd[1], pwd[2], pwd[3]
+				});
+				
+				Log.d(TAG, "Read Response:");
+				Log.d(TAG, response)
+				
+				// Check if PACK is matching expected PACK
+				// This is a (not that) secure method to check if tag is genuine
+				if ((response != null) && (response.length >= 2)) {
+					final byte[] packResponse = Arrays.copyOf(response, 2);
+					if (!(pack[0] == packResponse[0] && pack[1] == packResponse[1])) {runOnUiThread(new Runnable() {
+						@Override
+						public void run() {
+							//Toast.makeText(ctx, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString(), Toast.LENGTH_LONG).show();
+							Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString());
+						}
+					});
+					}else{
+						runOnUiThread(new Runnable() {
+							@Override
+							public void run() {
+								//Toast.makeText(ctx, "Tag successfully authenticated!", Toast.LENGTH_SHORT).show();
+								Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString());
+							}
+						});
+					}
+				}
+			//} catch (TagLostException e) {
+			} catch (Exception e) {
+				Log.d(TAG, "Error: " + e.getMessage());
+				e.printStackTrace();
+				
+			}
+		}else{
+			// Protect tag with your password in case
+			// it's not protected yet
+
+			// Get Page 2Ah
+			response = mifare.transceive(new byte[] {
+					(byte) 0x30, // READ
+					(byte) 0x2A  // page address
+			});
+			// configure tag as write-protected with unlimited authentication tries
+			if ((response != null) && (response.length >= 16)) {    // read always returns 4 pages
+				boolean prot = false;                               // false = PWD_AUTH for write only, true = PWD_AUTH for read and write
+				int authlim = 0;                                    // 0 = unlimited tries
+				mifare.transceive(new byte[] {
+						(byte) 0xA2, // WRITE
+						(byte) 0x2A, // page address
+						(byte) ((response[0] & 0x078) | (prot ? 0x080 : 0x000) | (authlim & 0x007)),    // set ACCESS byte according to our settings
+						0, 0, 0                                                                         // fill rest as zeros as stated in datasheet (RFUI must be set as 0b)
+				});
+			}
+			// Get page 29h
+			response = mifare.transceive(new byte[] {
+					(byte) 0x30, // READ
+					(byte) 0x29  // page address
+			});
+			
+			Log.d(TAG, "Response: ");
+			Log.d(TAG, response);
+			
+			// Configure tag to protect entire storage (page 0 and above)
+			if ((response != null) && (response.length >= 16)) {  // read always returns 4 pages
+				int auth0 = 0;                                    // first page to be protected
+				mifare.transceive(new byte[] {
+						(byte) 0xA2, // WRITE
+						(byte) 0x29, // page address
+						response[0], 0, response[2],              // Keep old mirror values and write 0 in RFUI byte as stated in datasheet
+						(byte) (auth0 & 0x0ff)
+				});
+			}
+
+			// Send PACK and PWD
+			// set PACK:
+			mifare.transceive(new byte[] {
+					(byte)0xA2,
+					(byte)0x2C,
+					pack[0], pack[1], 0, 0  // Write PACK into first 2 Bytes and 0 in RFUI bytes
+			});
+			// set PWD:
+			mifare.transceive(new byte[] {
+					(byte)0xA2,
+					(byte)0x2B,
+					pwd[0], pwd[1], pwd[2], pwd[3] // Write all 4 PWD bytes into Page 43
+			});
+		}
+	}
 }

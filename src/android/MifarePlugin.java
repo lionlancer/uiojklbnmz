@@ -701,7 +701,7 @@ public class MifarePlugin extends CordovaPlugin {
 							e.printStackTrace();
 						}
 					}
-					runOnUiThread(new Runnable() {
+					this.runOnUiThread(new Runnable() {
 						@Override
 						public void run() {
 							//UI related things, not important for NFC
@@ -733,9 +733,20 @@ public class MifarePlugin extends CordovaPlugin {
 
 			}
 		})).start();
-	}
+	}	
 	
+	/*
 	private void read(){
+		Tag tag = intent.getParcelableExtra(NfcAdapter.EXTRA_TAG);
+		// Using NfcA instead of MifareUltralight should make no difference in this method
+		NfcA nfca = null;
+
+		// Whole process is put into a big try-catch trying to catch the transceive's IOException
+		
+		nfca = NfcA.get(tag);
+
+		nfca.connect();
+		
 		byte[] response;
 
 		//Read page 41 on NTAG213, will be different for other tags
@@ -838,4 +849,5 @@ public class MifarePlugin extends CordovaPlugin {
 			});
 		}
 	}
+	*/
 }

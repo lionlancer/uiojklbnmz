@@ -19,7 +19,7 @@ package se.frostyelk.cordova.mifare;
 import android.content.Intent;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
-import android.nfc.tech.NfcA
+import android.nfc.tech.NfcA;
 import com.nxp.nfclib.classic.MFClassic;
 import com.nxp.nfclib.exceptions.SmartCardException;
 import com.nxp.nfclib.icode.*;
@@ -590,13 +590,13 @@ public class MifarePlugin extends CordovaPlugin {
 						if ((response != null) && (response.length >= 2)) {
 							byte[] packResponse = Arrays.copyOf(response, 2);
 							if (!(pack[0] == packResponse[0] && pack[1] == packResponse[1])) {
-								Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString())
+								Log.d(TAG, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString());
 								//Toast.makeText(ctx, "Tag could not be authenticated:\n" + packResponse.toString() + "≠" + pack.toString(), Toast.LENGTH_LONG).show();
 							}
 						}
 					//}catch(TagLostException e){
 					}catch(Exception e){
-						log.d(TAG, e.getMessage())
+						log.d(TAG, e.getMessage());
 						e.printStackTrace();
 					}
 
@@ -653,9 +653,9 @@ public class MifarePlugin extends CordovaPlugin {
 						NdefRecord r2 = NdefRecord.createApplicationRecord("com.example.alex.nfcapppcekunde");
 						msg = new NdefMessage(r1, r2);
 						
-						Log.d(TAG, "Message saved")
+						Log.d(TAG, "Message saved");
 					} catch (UnsupportedEncodingException e) {
-						Log.d(TAG, "Error:")
+						Log.d(TAG, "Error:");
 						e.printStackTrace();
 						
 					}
@@ -749,7 +749,7 @@ public class MifarePlugin extends CordovaPlugin {
 				});
 				
 				Log.d(TAG, "Read Response:");
-				Log.d(TAG, response)
+				Log.d(TAG, response);
 				
 				// Check if PACK is matching expected PACK
 				// This is a (not that) secure method to check if tag is genuine

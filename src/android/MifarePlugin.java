@@ -18,6 +18,7 @@ package se.frostyelk.cordova.mifare;
 
 import java.util.Arrays;
 import android.content.Intent;
+import android.app.Activity;
 import android.nfc.NfcAdapter;
 import android.nfc.Tag;
 import android.nfc.tech.NfcA;
@@ -701,14 +702,17 @@ public class MifarePlugin extends CordovaPlugin {
 							e.printStackTrace();
 						}
 					}
-					runOnUiThread(new Runnable() {
-						@Override
-						public void run() {
+					
+					
+					
+					//runOnUiThread(new Runnable() {
+					//	@Override
+					//	public void run() {
 							//UI related things, not important for NFC
 							//btn.setImageResource(R.drawable.arrow_red);
 							//tv.setText("");
-						}
-					});
+					//	}
+					//});
 					//curAction = "handle";
 					
 					//read();
